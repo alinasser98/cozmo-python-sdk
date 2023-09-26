@@ -49,3 +49,6 @@ def find_total(hand):
         else:
             return hand_value
     
+#simulate a game of blackjack
+#need number of decks in a shoe
+#need number of players at the table
