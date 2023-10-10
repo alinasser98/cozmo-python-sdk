@@ -11,8 +11,8 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, Flatten, Dropout
 
 #let's set up our parameters
-num_decks = random.randint(1, 8)  # Randomly choose decks between 1 to 8
-players = random.randint(1, 8)   # Randomly choose players between 1 to 8
+num_decks = 6
+players = 6
 
 #first, let's make a shoe
 def make_shoe(num_decks, card_types):
