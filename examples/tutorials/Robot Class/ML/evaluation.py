@@ -26,7 +26,7 @@ sum_of_ones = filtered_data['result'].sum()
 
 ali_win = (sum_of_ones/column_length)*100
 
-df2 = pd.read_csv('Denise_blackjackdata.csv')
+df2 = pd.read_csv('Denise_blackjackdata_6_6.csv')
 
 column_data = df2['result']
 column_length = len(column_data)

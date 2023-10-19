@@ -11,8 +11,8 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, Flatten, Dropout
 
 #let's set up our parameters
-num_decks = random.randint(1, 8)  # Randomly choose decks between 1 to 8
-players = random.randint(1, 8)   # Randomly choose players between 1 to 8
+num_decks = 6
+players = 6
 
 #first, let's make a shoe
 def make_shoe(num_decks, card_types):
@@ -168,7 +168,7 @@ card_types = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 special_cards = [10, 'J', 'Q', 'K'] 
 
 #set some parameters for the number of simulations (each simulation involves going through a shoe)
-simulations = 5000
+simulations = 1000
 
 
 #let's keep track of each round (dealer and player hands as well as the outcome) to analyze this data
@@ -203,6 +203,206 @@ num_players_list = []
 num_decks_list = []
 
 
+#neural network for blackjack
+
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sklearn.metrics as metrics
+from sklearn.model_selection import train_test_split
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Flatten, Dropout
+
+#let's set up our parameters
+num_decks = 3
+players = 8
+
+#first, let's make a shoe
+def make_shoe(num_decks, card_types):
+    new_shoe = []
+    for i in range(num_decks):
+        for j in range(4):
+            new_shoe.extend(card_types)
+    random.shuffle(new_shoe)
+    return new_shoe
+
+
+#next, we need a function to add up the value of the cards in a hand.  Aces can be 1 or 11, and we need to allow for both
+#a hand consists of a list of cards, and this function returns a list of the possible values of the total, depending on the
+#number of aces.  Because a shoe has several decks, we need to allow for the possibility of lots of aces.  If there is one
+#ace, the ace can be either 1 or 11.  two aces can add up to 2 or 12 (NOTE: only one ace in a hand can count as 11)
+#in general, k aces can add up to either k or k + 10, but we only care about an ace being 11 if it doesn't make the player go bust
+#as a naive approach, we will just consider the value of the ace to be the one that yields the highest hand value...this might change
+#in your decision-making strategy, especially if counting it as an 11 results in a bust, but counting it as a 1 keeps a player alive
+def find_total(hand):
+    face_cards = ['K', 'Q', 'J']
+    aces = 0
+    total = 0
+    #a card will either be an integer in [2, 10] or a face card, or an ace
+    for card in hand:
+        if card == 'A':
+            aces = aces + 1
+        elif card in face_cards:
+            total = total + 10
+        else:
+            total = total + card
+        #at this point, we have the total of the hand, excluding any aces. 
+    if aces == 0:
+        return total
+    else:
+        #count all of the aces as 1, and return the highest of the possible total values, in ascending order; this is one place
+        #where our approach could be improved
+        ace_hand = [total + aces]
+        ace_total = total + aces + 10
+        if  ace_total < 22:
+            ace_hand.append(ace_total)
+        return max(ace_hand)
+
+#next, let's simulate ONE game, once the cards have been dealt...we will use this function to determine the player strategy
+#dealer_hand: 2 cards the dealer has
+#player_hands: the cards that the players have
+#curr_player_results: a list containing the result of each player's hand for this round; if there are three players, it might be [1, -1, 1]
+#dealer_cards: the cards left in the shoe; the shoe with the cards that have been dealt to the players for hitting will have been removed
+#hit_stay: is used to determine if a player hits or stays...you'll probably modify this in your own decision-making process
+#card_count: a dictionary to store the counts of the various card values that have been seen, for future card
+#counting in influencing our decision making and training data
+def play_hand(dealer_hand, player_hands, curr_player_results, dealer_cards, hit_stay, card_count, dealer_bust):
+    
+    #first, check if the dealer has blackjack.  that can only happen if the dealer has a total of 21, logically, and 
+    #the game will be over before it really gets started...the players cannot hit
+    if (len(dealer_hand) == 2) and (find_total(dealer_hand) == 21):
+        for player in range(players):
+            #update live_action for the players, since they don't have a choice
+            live_action.append(0)
+            
+            #check if any of the players also have blackjack, if so, they tie, and if not, they lose
+            if (len(player_hands[player]) == 2) and (find_total(player_hands[player]) == 21):
+                curr_player_results[0, player] = 0
+            else:
+                curr_player_results[0, player] = -1    
+    
+    #now each player can make their decisions...first, they should check if they have blackjack
+    #for this player strategy, the decision to hit or stay is random if the total value is less than 12...
+    #so it is somewhat unrelated to the cards they actually have been dealt (and is conservative), and ignores the card 
+    #that the dealer has.  We will use this strategy to generate training data for a neural network.  
+    #your job will be to improve this strategy, incorporate the dealer's revealed card, train a new neural
+    #network based on that simulated data, and then compare the results of your neural network to the baseline
+    #model generated from this training data.
+    else:
+        for player in range(players):
+            #the default is that they do not hit
+            action = 0
+            
+            #check for blackjack so that the player wins
+            if (len(player_hands[player]) == 2) and (find_total(player_hands[player]) == 21):
+                curr_player_results[0, player] = 1
+            else:
+                #hit randomly if card total is less than 12 and check for busts
+                while (random.random() > hit_stay) and (find_total(player_hands[player]) < 12):
+                    #deal a card
+                    player_hands[player].append(dealer_cards.pop(0))
+                    
+                    #update our dictionary to include the new card
+                    card_count[player_hands[player][-1]] += 1
+                    
+                    #note that the player decided to hit
+                    action = 1
+                    
+                    #get the new value of the current hand regardless of if they bust or are still in the game
+                    #we will track the value of the hand during play...it was initially set up in the section below,
+                    #and we are just updating it if the player decides to hit, so that it changes
+                    live_total.append(find_total(player_hands[player]))                      
+                        
+                    #if the player goes bust, we need to stop this nonsense and enter the loss...
+                    #we will record their hand value outside of the while loop once we know the player is done
+                    if find_total(player_hands[player]) > 21:
+                        curr_player_results[0, player] = -1
+                        break  
+            #update live_action to reflect the player's choice
+            live_action.append(action)
+                    
+    #next, the dealer takes their turn based on the rules
+    #first, the dealer will turn over their card, so we can count it and update our dictionary; this is the FIRST card they were dealt
+    card_count[dealer_hand[0]] += 1
+    
+    while find_total(dealer_hand) < 17:
+        #the dealer takes a card
+        dealer_hand.append(dealer_cards.pop(0))    
+        
+        #update our dictionary for counting cards
+        card_count[dealer_hand[-1]] += 1
+    
+    
+    #this round is now complete, so we can determine the outcome...first, determine if the dealer went bust
+    if  find_total(dealer_hand) > 21:
+        
+        #the dealer went bust, so we can append that to our tracking of when the dealer goes bust
+        #we'll have to track the player outcomes differently, because if the dealer goes bust, a player
+        #doesn't necessarily win or lose
+        dealer_bust.append(1)
+        
+        #every player that has not busted wins
+        for player in range(players):
+            if curr_player_results[0, player] != -1:
+                curr_player_results[0, player] = 1
+    else:
+        #the dealer did not bust
+        dealer_bust.append(0)
+        
+        #check if a player has a higher hand value than the dealer...if so, they win, and if not, they lose
+        #ties result in a 0; for our neural network, we may want to lump ties with wins if we want a binary outcome
+        for player in range(players):
+            if find_total(player_hands[player]) > find_total(dealer_hand):
+                if find_total(player_hands[player]) < 22:
+                    curr_player_results[0, player] = 1
+            elif find_total(player_hands[player]) == find_total(dealer_hand):
+                curr_player_results[0, player] = 0
+            else:
+                curr_player_results[0, player] = -1    
+    
+    #the hand is now complete, so we can return the results
+    #we will return the results for each player
+    return curr_player_results, dealer_cards, card_count, dealer_bust
+                 
+
+#now we can run some simulations
+
+card_types = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'] 
+special_cards = [10, 'J', 'Q', 'K'] 
+
+#set some parameters for the number of simulations (each simulation involves going through a shoe)
+simulations = 1000
+
+
+#let's keep track of each round (dealer and player hands as well as the outcome) to analyze this data
+#there is no need to break this up by simulation, since what we want to analyze are the games, regardless
+#of which simulation it is in...but we will be able to track that information through the sim_number_list
+#if we wanted to analyze our data across simulations.
+
+#we want the cards that the dealer was dealt throughout the simulaton
+dealer_card_history = []
+dealer_total_history = []
+
+#we want all of the cards dealt to each player for each of the games in the simulation
+player_card_history = []
+
+#we want the player's outcome for each of the games in the simulation
+outcome_history = []
+
+#we want the hand values tracked for each of the games in the simulation
+player_live_total = []
+
+#we want to know whether the player hit during each of the games in the simulation
+player_live_action = []
+
+#we want to know if the dealer went bust in each of the games in the simulation
+dealer_bust = []
+
+#we need to keep track of our card counter throughout the simulation
+card_count_list = []
+
 #we can track characteristics related to the shoe or simulation, as noted above:
 first_game = True
 prev_sim = 0
@@ -225,22 +425,9 @@ for sim in range(simulations):
     #create the shoe
     dealer_cards = make_shoe(num_decks, card_types)
     
-    # This is new: we want to keep track of the number of players and the number of decks in the shoe
-    num_players_list = [players] * len(dealer_cards)
-    num_decks_list = [num_decks] * len(dealer_cards)
-    
     #for each simulation, create a dictionary to keep track of the cards in the shoe, initially set to 0 for all cards
     card_count = {'A':0, 2:0, 3:0, 4:0, 5:0, 6:0,7:0, 8:0, 9:0, 10:0, 'J':0, 'Q':0, 'K':0}    
     
-    def update_count(card, card_count):
-        if card in ['A', 10, 'J', 'Q', 'K']:
-            card_count['A'] -= 1  # Decrementing for any of the high cards or Aces
-        elif card in [2, 3, 4, 5, 6]:
-            card_count['A'] += 1  # Incrementing for any of the low cards
-        # We do not update for neutral cards (7, 8, 9)
-        return card_count
-
-# Update this function everywhere in the code where you're updating the card count.
     #play until the shoe is almost empty...we can change this to be a function of the number of decks
     #in a shoe, but we won't start a game if there are fewer than 20 cards in a shoe...if we limit
     #the number of players to 4 (plus the dealer), then we'll need at least 10 cards for the game, and
@@ -249,8 +436,7 @@ for sim in range(simulations):
     while len(dealer_cards) > 20:
         
         #here's how we will manage each game in the simulation:
-        num_players_list.extend([players] * len(dealer_cards))
-        num_decks_list.extend([num_decks] * len(dealer_cards))
+        
         #keep track of the outcome of the players hand after the game: it will be 1, 0, -1
         curr_player_results = np.zeros((1, players))
         
@@ -286,8 +472,6 @@ for sim in range(simulations):
         hit_stay = 0.5
         
         curr_player_results, dealer_cards, card_count, dealer_bust = play_hand(dealer_hand, player_hands, curr_player_results, dealer_cards, hit_stay, card_count, dealer_bust)
-        num_players_list.append(players)
-        num_decks_list.append(num_decks)
         
         #track the outcome of the hand
         #we want to know the dealer's card that is showing and their final total
@@ -319,8 +503,6 @@ for sim in range(simulations):
         card_count_list.append(card_count.copy())
         prev_sim = sim
         
-    num_players_list = num_players_list[:len(dealer_card_history)]
-    num_decks_list = num_decks_list[:len(dealer_card_history)]
            
 #create the dataframe for analysis.  My model will have the following features:
 #the dealer's second card is the one that is face up...
@@ -404,52 +586,48 @@ for i in range(len(player_live_action)):
         interest_list.append(value)
         
         
-    #decision_evaluation will be the result that our model will predict (should we have hit? Y = 1.  Should we have stayed? Y = 0).
-    #we will have a list of lists, where each list is the decision evaluation for each player in the game
+    #decision_evaluation will be the result that our model will predict (should we have hit? Y = 1.  Should we have stayed? Y = 0)
     decision_evaluation.append(interest_list.copy())
 
-#this attribute ('outcome') will be our label in our model...the parameter that we want our model to determine based on the other attributes
+#this attribute ('outcome') will be our label in our model...the parameter that we want our model to determine
 model_df['outcome'] = decision_evaluation
 
 #our data is now complete, but it's not in the format that we want.  Most of the work involved in training
 #an ML model involves generating, cleaning, and transforming the data.  One that's done, the rest is straightforward.
 #the last step is to split up the information so that we can focus on each player and each hand separately
-#we urrently have arrays for the player_initial_value, hit, results, and outcome attributes in our dataframe
+#we urrently have arrays for the player_initial_value, hit, results, and outcome attributes
 
 #NOTE: For this proess, I'm intentionally stepping through each logial step in the process, rather than just
 #writing a minimal script to accomplish this task.  bite-size pieces help ensure that the logic is correct. 
 #this is not the only way to accomplish this task.  But, hopefully you are reading each section to understand
-#what i'm doing...especially if you don't have much experience working with pandas. I'm also adding print
+#what i'm doing...especially if you don't have much experience working with pandas.
 
 #we'll first expand all of the arrays in our dataframe.  In this process, a prefix will be added so
 #that we can keep track of what each feature means.  I'm creating new dataframes for each of these expansions
 #the player_initial_value, hit, results, and outcome...these expansions are adding fields, NOT rows. so the index
 #values should not change...and that's what we'll be able to merge on.  put some print statements in to follow these
-#steps. we'll also create dataframes for the number of players and the number of decks, since those are attributes
-num_of_player = [players] * len(decision_evaluation)
-num_of_decks = [num_decks] * len(decision_evaluation)
-
+#steps.
 init_hand_df = pd.DataFrame(model_df['player_initial_value'].tolist()).fillna('').add_prefix('init_hand_p')
 hit_df = pd.DataFrame(model_df['hit'].tolist()).fillna('').add_prefix('hit_p')
 results_df = pd.DataFrame(model_df['results'].tolist()).fillna('').add_prefix('result_p')
 outcome_df = pd.DataFrame(model_df['outcome'].tolist()).fillna('').add_prefix('outcome_p')
-num_of_player_df = pd.DataFrame(num_of_player).fillna('').add_prefix('result_p')
-num_of_decks_df = pd.DataFrame(num_of_decks).fillna('').add_prefix('result_p')
 
+num_of_player = [players] * len(decision_evaluation)
+num_of_decks = [num_decks] * len(decision_evaluation)
 #now i have to merge these new dataframes to the original model_df.  again, some print statements (using info or describe
-#on a dataframe is probably helpful here). we want to merge on the index, so we'll use left_index and right_index
+#on a dataframe is probably helpful here).
 step1 = pd.merge(model_df, init_hand_df, left_index=True, right_index=True)
 step2 = pd.merge(step1, hit_df, left_index=True, right_index=True)
 step3 = pd.merge(step2, results_df, left_index=True, right_index=True)
 step4 = pd.merge(step3, outcome_df, left_index=True, right_index=True)
 
-# Drop the original arrays with player information from the DataFrame
+# Drop the original arrays with player information
 step5 = step4.drop(['player_initial_value', 'hit', 'results', 'outcome'], axis=1)
 
-# Create attribute names for the columns in the final DataFrame
+# Create attribute names for the columns
 attribute_names = ['num_of_player', 'num_of_decks', 'dealer_card', 'dealer_value', 'dealer_bust', 'init_hand', 'hit', 'result', 'outcome']
 
-# Create a list to store DataFrames for each player in the game
+# Create a list to store DataFrames for each player
 player_dataframes = []
 
 for index in range(players):
@@ -458,26 +636,25 @@ for index in range(players):
     att3 = 'result_p' + str(index)
     att4 = 'outcome_p' + str(index)
     
-    # Extract the data for the current player and store it in a new DataFrame
+    # Extract the data for the current player
     player_df = step5[['dealer_card', 'dealer_value', 'dealer_bust', att1, att2, att3, att4]]
     
-    # Rename the columns somthing more meaningful
+    # Rename the columns
     player_df.columns = attribute_names[2:]  # Skip 'num_of_player' and 'num_of_decks'
     
-    # Add 'num_of_player' and 'num_of_decks' columns to the beginning of the DataFrame
+    # Add 'num_of_player' and 'num_of_decks' columns to the beginning
     player_df.insert(0, 'num_of_player', num_of_player[index])
     player_df.insert(1, 'num_of_decks', num_of_decks[index])
     
-    # Append the player's DataFrame to the list of DataFrames
+    # Append the player's DataFrame to the list
     player_dataframes.append(player_df)
 
-#conatenate that new player's data to our final dataframe now that the column names all match.  we are goingto ignore the index
-#so that we end up with a total final count of the number of rows in our training/testing dataset.
+# Concatenate all player DataFrames
 final_df = pd.concat(player_dataframes, ignore_index=True)
 
-#write the data to a csv file, in case we want to refer to it later
-final_df.to_csv('Denise_blackjackdata.csv', index=False)
+# Write the data to a CSV file
+final_df.to_csv('Denise_blackjackdata_6_6.csv', index=False)
 
-#Note: Now we are ready to train/test the model, using the data in this csv.  You should think about automating this process
+#NOTE: Now we are ready to train/test the model, using the data in this csv.  You should think about automating this process
 #so that you can easily generate csv files with simulation data for different scenarios (varying the number of decks in a shoe
 #or the number of players.

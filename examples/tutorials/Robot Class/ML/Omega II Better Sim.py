@@ -60,11 +60,7 @@ def find_total(hand):
         return max(ace_hand)
 
 def prob_based_on_omega_ii(card_count, dealer_cards):
-    # I am trying to implement Hi-Lo card count strategy so I add the counts of the big cards and small cards
-    # if the total count of big cards is greater than the count of small cards then the player will hit
-    # because you need more number of small cards to get to 21
-    # so the probability assigned would be greater than 0.5
-    # Implementing Omega II card counting strategy
+        # Implementing Omega II card counting strategy
     omega_ii_count = card_count[2] + card_count[3] + \
                      2*card_count[4] + 2*card_count[5] + 2*card_count[6] + \
                      card_count[7] - card_count[8] - 2*card_count[9] - \
@@ -86,7 +82,7 @@ def prob_based_on_omega_ii(card_count, dealer_cards):
 #hit_stay: is used to determine if a player hits or stays...you'll probably modify this in your own decision-making process
 #card_count: a dictionary to store the counts of the various card values that have been seen, for future card
 #counting in influencing our decision making and training data
-def play_hand(dealer_hand, player_hands, curr_player_results, dealer_cards, hit_stay, card_count, dealer_bust, players):
+# def play_hand(dealer_hand, player_hands, curr_player_results, dealer_cards, hit_stay, card_count, dealer_bust, players):
     """
     Simulates a single hand of blackjack for the given number of players and returns the results for each player.
     
@@ -209,7 +205,7 @@ card_types = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 special_cards = [10, 'J', 'Q', 'K'] 
 
 #set some parameters for the number of simulations (each simulation involves going through a shoe)
-simulations = 2000
+simulations = 1000
 
 
 #let's keep track of each round (dealer and player hands as well as the outcome) to analyze this data
