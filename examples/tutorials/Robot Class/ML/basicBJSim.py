@@ -168,7 +168,7 @@ card_types = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 special_cards = [10, 'J', 'Q', 'K'] 
 
 #set some parameters for the number of simulations (each simulation involves going through a shoe)
-simulations = 750
+simulations = 5000
 
 
 #let's keep track of each round (dealer and player hands as well as the outcome) to analyze this data
@@ -476,7 +476,7 @@ for index in range(players):
 final_df = pd.concat(player_dataframes, ignore_index=True)
 
 #write the data to a csv file, in case we want to refer to it later
-final_df.to_csv('blackjackdata.csv', index=False)
+final_df.to_csv('Denise_blackjackdata.csv', index=False)
 
 #Note: Now we are ready to train/test the model, using the data in this csv.  You should think about automating this process
 #so that you can easily generate csv files with simulation data for different scenarios (varying the number of decks in a shoe
