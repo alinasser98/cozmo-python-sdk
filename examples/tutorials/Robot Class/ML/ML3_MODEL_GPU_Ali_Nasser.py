@@ -124,3 +124,6 @@ print(f"Precision: {precision:.2f}")
 print(f"Recall: {recall:.2f}")
 print(f"F1-score: {f1:.2f}")
 print(predicted_labels)
+# data analysis and data visualization
+num_training_samples = train_data.shape[0]
+print(f"Number of training samples: {num_training_samples}")
