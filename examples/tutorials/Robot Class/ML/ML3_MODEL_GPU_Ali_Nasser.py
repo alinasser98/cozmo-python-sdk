@@ -13,33 +13,48 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load and preprocess the data
 data = pd.read_csv('OmegaII_6_6.csv')
+
+# Select the columns that the player has access to
+accessible_columns = ['num_of_player', 'num_of_decks', 'dealer_card', 'init_hand', 'hit', 'outcome']
+data = data[accessible_columns]
+
+# One-hot encode 'dealer_card'
 data = pd.get_dummies(data, columns=['dealer_card'])
 
-# Normalize the data
+# Normalize the data (excluding one-hot and target columns)
+feature_columns = ['num_of_player', 'num_of_decks', 'init_hand', 'hit']  # Specify the columns to normalize
 scaler = StandardScaler()
-data.iloc[:, 1:-1] = scaler.fit_transform(data.iloc[:, 1:-1])
+data[feature_columns] = scaler.fit_transform(data[feature_columns])
 
 data = data.astype('float32')
-train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
+
+# Split the dataset into features and target
+target_column = 'outcome'  # Specify the target column
+X = data.drop(columns=target_column)
+y = data[target_column]
+
+# Split the data into training and testing sets
+train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Custom PyTorch Dataset
 class BlackjackDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, features, labels):
+        self.features = features
+        self.labels = labels
 
     def __len__(self):
-        return len(self.data)
+        return len(self.features)
 
     def __getitem__(self, idx):
-        features = self.data.iloc[idx, 1:-1].values
-        target = self.data.iloc[idx, -1]
-        return torch.tensor(features), torch.tensor(target)
+        feature = self.features.iloc[idx].values
+        label = self.labels.iloc[idx]
+        return torch.tensor(feature), torch.tensor(label)
 
 # DataLoader instances
 batch_size = 32
-train_dataset = BlackjackDataset(train_data)
+train_dataset = BlackjackDataset(train_features, train_labels)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_dataset = BlackjackDataset(test_data)
+test_dataset = BlackjackDataset(test_features, test_labels)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
 # Design of the enhanced neural network model
@@ -67,20 +82,17 @@ class BlackjackModel(nn.Module):
         x = self.fc4(x)
         return x
 
-def inference(model, inputs):
-    outputs = model(inputs)
-    return torch.round(torch.sigmoid(outputs))
-
 # Initialize the model, loss function, and optimizer
-model = BlackjackModel(input_size=len(train_dataset[0][0])).to(device)
+input_size = train_features.shape[1]
+model = BlackjackModel(input_size=input_size).to(device)
 criterion = nn.BCEWithLogitsLoss().to(device)
 lr = 0.001
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 
 # Training loop
-num_epochs = 10
-print_every = 1
+num_epochs = 200
+print_every = 5
 for epoch in range(num_epochs):
     total_loss = 0.0
     for inputs, targets in train_loader:
@@ -105,10 +117,8 @@ model.eval()
 with torch.no_grad():
     for inputs, targets in test_loader:
         inputs, targets = inputs.to(device), targets.to(device)
-        outputs = inference(model, inputs.float())
-# I am using the following line below to get the predicted labels
-# but I am displaying it as tru and false in my print out at the end.
-        predicted = (outputs >= 0.5).view(-1)
+        outputs = model(inputs.float())
+        predicted = (outputs >= 0.5).float().view(-1)
         true_labels.extend(targets.cpu().numpy())
         predicted_labels.extend(predicted.cpu().numpy())
 
@@ -118,12 +128,10 @@ accuracy = accuracy_score(true_labels, predicted_labels)
 precision = precision_score(true_labels, predicted_labels)
 recall = recall_score(true_labels, predicted_labels)
 f1 = f1_score(true_labels, predicted_labels)
-# I am using the following line below to get the predicted labels and print them out as results.
+
 print(f"Accuracy: {accuracy:.2f}")
 print(f"Precision: {precision:.2f}")
 print(f"Recall: {recall:.2f}")
 print(f"F1-score: {f1:.2f}")
-print(predicted_labels)
-# data analysis and data visualization
-num_training_samples = train_data.shape[0]
-print(f"Number of training samples: {num_training_samples}")
+print("Predicted labels:", predicted_labels)
+print(f"Number of training samples: {train_features.shape[0]}")
