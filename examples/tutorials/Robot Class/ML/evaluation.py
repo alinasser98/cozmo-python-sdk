@@ -10,9 +10,9 @@ from keras.layers import Dense, LSTM, Flatten, Dropout
 
 
 # Read the CSV file into a DataFrame
-df1 = pd.read_csv('Probability_6_6.csv')
+df1 = pd.read_csv('4_3_blackjack_training_data.csv')
 
-column_data = df1['result']
+column_data = df1['outcome']
 column_length = len(column_data)
 # Check if each value in the column is equal to 1
 is_equal_to_1 = column_data == 1
@@ -21,7 +21,7 @@ is_equal_to_1 = column_data == 1
 filtered_data = df1[is_equal_to_1]
 
 # Calculate the sum of the values that are equal to 1
-sum_of_ones = filtered_data['result'].sum()
+sum_of_ones = filtered_data['outcome'].sum()
 
 
 ali_win = (sum_of_ones/column_length)*100

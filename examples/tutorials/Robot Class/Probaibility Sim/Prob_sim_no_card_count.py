@@ -121,24 +121,15 @@ for _ in range(NUM_ROUNDS): # this loops through the number of rounds specified 
         else:
             outcome = -1  # A loss
         update_card_count(dealer_hand[0]) # this updates the card count for the dealer hand face down card since we are done with the round
-        current_probabilities = calculate_probabilities(num_decks_remaining, card_count) # this calculates the probabilities of the cards remaining in the shoe after the round
-
         # this is how I am storing the data for each round
-        round_data = {
+        data.append({
             'num_players': NUM_PLAYERS, # this is the number of players at the table
             'num_decks': NUM_DECKS, # this is the number of decks in the shoe
             'Player Initial Hand': calculate_hand_value(player_hand[:2]), # this is the player initial hand value (first 2 cards)
             'Dealer Up Card': calculate_hand_value([dealer_card]), # this is the dealer up card value
             'Action Taken': action, # this is the action taken by the player (hit or stay)
             'Outcome': outcome # this is the outcome of the round (win, loss, or tie)
-        }
-        for card in RANKS:
-            round_data[f'Count_{card}'] = card_count[card] # this appends the card count for each card to the round data
-            round_data[f'Probability_{card}'] = current_probabilities[card] # this appends the probability for each card to the round data
-
-        # Appending round data to the data list
-        data.append(round_data) # this appends the round data to the data list
-
+        })
 # Export to CSV after all rounds are complete
 df = pd.DataFrame(data) # this creates a dataframe from the data list
 df.to_csv(f"{NUM_DECKS}_{NUM_PLAYERS}_blackjack_training_data.csv", index=False) # this exports the dataframe to a csv file
