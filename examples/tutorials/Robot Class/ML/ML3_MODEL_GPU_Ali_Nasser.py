@@ -22,7 +22,7 @@ data = data[accessible_columns]
 data = pd.get_dummies(data, columns=['dealer_card'])
 
 # Normalize the data (excluding one-hot and target columns)
-feature_columns = ['num_of_player', 'num_of_decks', 'init_hand', 'hit']  # Specify the columns to normalize
+feature_columns = ['num_of_player', 'num_of_decks', 'init_hand','dealer_card', 'hit']  # Specify the columns to normalize
 scaler = StandardScaler()
 data[feature_columns] = scaler.fit_transform(data[feature_columns])
 

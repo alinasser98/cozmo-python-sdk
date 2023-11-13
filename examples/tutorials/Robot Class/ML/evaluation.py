@@ -10,7 +10,7 @@ from keras.layers import Dense, LSTM, Flatten, Dropout
 
 
 # Read the CSV file into a DataFrame
-df1 = pd.read_csv('OmegaII_6_6.csv')
+df1 = pd.read_csv('Probability_6_6.csv')
 
 column_data = df1['result']
 column_length = len(column_data)
