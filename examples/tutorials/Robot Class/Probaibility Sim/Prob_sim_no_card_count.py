@@ -2,143 +2,147 @@ import random
 import pandas as pd
 import math
 
-# Create parameters
-NUM_DECKS = 4 # Number of decks in the shoe
-NUM_PLAYERS = 3 # Number of players at the table
-NUM_ROUNDS = 1000 # Number of rounds to simulate
-MIN_CARDS_BEFORE_RESHUFFLE = 52 # Minimum number of cards before reshuffling
+# Parameters
+NUM_DECKS = 4
+NUM_PLAYERS = 3
+NUM_ROUNDS = 1000
+MIN_CARDS_BEFORE_RESHUFFLE = 52
 
-# Initialize the creation of the deck
-SUITS = ['Hearts', 'Diamonds', 'Clubs', 'Spades'] # Suits in a deck
-RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] # Ranks in a deck
-DECK = [(rank, suit) for suit in SUITS for rank in RANKS] # This created a list of tuples for each card in the deck
+# Deck Creation Without Suits
+RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+DECK = RANKS * 4  # Four of each rank to represent four suits
 
 # Function to create and shuffle a new shoe
-def create_shuffled_shoe(num_decks): # I am defining a function to create a shuffled shoe
-    shoe = DECK * num_decks # this creates a shoe with the number of decks specified
-    random.shuffle(shoe) # this shuffles the shoe using the random library
+def create_shuffled_shoe(num_decks):
+    shoe = DECK * num_decks
+    random.shuffle(shoe)
     return shoe
 
-# Creating a shoe
-shoe = create_shuffled_shoe(NUM_DECKS) # this creates a shoe with the number of decks specified
-
-# Initialize card count
-card_count = {card: 0 for card in RANKS} # card_count = {'2':0,'3':0,.....,'A':0}
-
-# Function to calculate the hand value of a player
-def calculate_hand_value(hand): # I am defining a function to calculate the hand value
-    value, aces = 0, 0 # this sets the value and aces to 0
-    for card in hand: # this loops through the hand
-        rank, _ = card # this sets the rank to the first value in the card tuple
-        if rank in ['J', 'Q', 'K']: # this checks if the rank is a face card
-            value += 10 # this adds 10 to the value variable
-        elif rank == 'A': # this checks if the rank is an ace
-            aces += 1 # this adds 1 to the aces variable
+# Function to calculate hand value
+def calculate_hand_value(hand):
+    value, aces = 0, 0
+    for rank in hand:
+        if rank in ['J', 'Q', 'K']:
+            value += 10
+        elif rank == 'A':
+            aces += 1
         else:
-            value += int(rank) # this adds the rank to the value variable
-    for _ in range(aces): # this loops through the number of aces
-        value += 11 if value + 11 <= 21 else 1 # this adds 11 to the value if the value is less than 21, otherwise it adds 1
+            value += int(rank)
+
+    for _ in range(aces):
+        if value + 11 <= 21:
+            value += 11
+        else:
+            value += 1
+
     return value
 
-# Update Card Count Function
-def update_card_count(card): # I am defining a function to update the card count
-    rank, _ = card
-    card_count[rank] += 1 # this adds 1 to the card count for the rank
+# Update seen cards function
+def update_seen_cards(rank):
+    seen_cards[rank] += 1
 
-# Probability Calculation Function
-def calculate_probabilities(num_decks_remaining, card_count): # I am defining a function to calculate the probabilities
-    total_cards = num_decks_remaining * 52 # using this to calculate the total number of cards remaining
-    probabilities = {} #I am creating a dictionary to store and track the probabilities
-    for card in RANKS: # this loops through the ranks
-        count_of_card = card_count.get(card, 0) # this gets the count of the card from the card_count dictionary and sets it to 0 if it doesn't exist
-        probabilities[card] = count_of_card / total_cards if total_cards > 0 else 0 # this calculates the probability of the card and stores it in the dictionary
-    return probabilities # this returns the probabilities dictionary
-
-# Decision Making Function
-def make_decision(hand, dealer_card, num_decks_remaining): # I am defining a function to make a decision for weather a player should hit or stay
-    hand_value = calculate_hand_value(hand) # this calculates the hand value of the player
-    probabilities = calculate_probabilities(num_decks_remaining, card_count) # this calculates the probabilities of the cards remaining
-    # Calculate probability of a safe hit (not exceeding 21)
-    safe_hit_prob = 0 # I created a variable to store the probability of a safe hit
-    for rank, prob in probabilities.items(): # this loops through the probabilities
-        if rank in ['J', 'Q', 'K']: # this checks if the rank is a face card
-            added_value = 10 # this sets the added value to 10 if it is a face card
-        elif rank == 'A': # this checks if the rank is an ace
-            added_value = 11 if hand_value + 11 <= 21 else 1 # this sets the added value to 11 if the hand value is less than 21, otherwise it sets it to 1
+# Probability calculation function - Based on seen cards
+def calculate_probabilities(seen_cards, total_deck_count):
+    probabilities = {}
+    for rank in RANKS:
+        unseen_count = total_deck_count[rank] - seen_cards.get(rank, 0)
+        total_unseen = sum(total_deck_count.values()) - sum(seen_cards.values())
+        if total_unseen > 0:
+            probabilities[rank] = unseen_count / total_unseen
         else:
-            added_value = int(rank) # this translates the rank that was a string to an integer and sets it to the added value
-        if hand_value + added_value <= 21: # this checks if the hand value plus the added value is less than or equal to 21
-            safe_hit_prob += prob # I am using this to add the probability of a safe hit to the safe_hit_prob variable
-    if hand_value < 12 or (hand_value < 21 and safe_hit_prob > 0.5): # this checks if the hand value is less than 12 or if the hand value is less than 21 and the safe hit probability is greater than 0.5
-        return 1  # If it returns 1 the player will hit
+            probabilities[rank] = 0
+    return probabilities
+
+# Decision making function - Using estimated probabilities
+def make_decision(hand, dealer_card, seen_cards, total_deck_count):
+    hand_value = calculate_hand_value(hand)
+    probabilities = calculate_probabilities(seen_cards, total_deck_count)
+    safe_hit_prob = 0
+
+    for rank, prob in probabilities.items():
+        if rank in ['J', 'Q', 'K']:
+            added_value = 10
+        elif rank == 'A':
+            if hand_value + 11 <= 21:
+                added_value = 11
+            else:
+                added_value = 1
+        else:
+            added_value = int(rank)
+
+        if hand_value + added_value <= 21:
+            safe_hit_prob += prob
+
+    if hand_value < 12 or (hand_value < 21 and safe_hit_prob > 0.5):
+        return 1
     else:
-        return 0  # If it returns 0 the player will stay
+        return 0
 
-# Data Collection
-data = [] # this is for data storage
+# Initialize seen cards and shoe
+seen_cards = {card: 0 for card in RANKS}
+total_deck_count = {card: NUM_DECKS * 4 for card in RANKS}
+shoe = create_shuffled_shoe(NUM_DECKS)
 
-# Game Simulation Loop (for each round)
-for _ in range(NUM_ROUNDS): # this loops through the number of rounds specified in the parameters that were set earlier
-    # Check how many decks are remaining and round up
-    num_decks_remaining = math.ceil(len(shoe) / (52 * NUM_DECKS)) # this calculates the number of decks remaining and rounds up
-                                                                  # math.ceil() rounds up
-    # Check and reshuffle the shoe if necessary
-    if len(shoe) < MIN_CARDS_BEFORE_RESHUFFLE: # this checks if the number of cards in the shoe is less than the minimum cards before reshuffle
-        shoe = create_shuffled_shoe(NUM_DECKS) # this creates a new shoe with the number of decks specified
-        card_count = {card: 0 for card in RANKS} # this resets the card count to 0 for each card
-    player_hands = [[] for _ in range(NUM_PLAYERS)] # this creates a list of lists for each player hand
-    dealer_hand = [shoe.pop()]  # Dealer's face-down card
+# Data collection
+data = []
 
-    # Deal first card to each player
-    for player_hand in player_hands: # this loops through the player hand list
-        card = shoe.pop() # this pops the first card from the shoe and sets it to the card variable
-        player_hand.append(card) # this appends the card to the player hand list
-        update_card_count(card) # this updates the card count for the card that was popped from the shoe
+# Game simulation loop
+for _ in range(NUM_ROUNDS):
+    if len(shoe) < MIN_CARDS_BEFORE_RESHUFFLE:
+        shoe = create_shuffled_shoe(NUM_DECKS)
+        seen_cards = {card: 0 for card in RANKS}
 
-    # Dealer's face-up card
-    dealer_card = shoe.pop() # this pops the first card from the shoe and sets it to the dealer_card variable
-    dealer_hand.append(dealer_card) # this appends the dealer card to the dealer hand list
-    update_card_count(dealer_card) # this updates the card count for the card that was popped from the shoe
+    player_hands = [[] for _ in range(NUM_PLAYERS)]
+    dealer_hand = [shoe.pop()]
+    update_seen_cards(dealer_hand[0])
 
-    # Deal second card to each player
     for player_hand in player_hands:
-        card = shoe.pop() 
-        player_hand.append(card) # this appends the second card to the player hand list
-        update_card_count(card)
+        card = shoe.pop()
+        player_hand.append(card)
+        update_seen_cards(card)
 
-    # The players make their decisions
-    for player_hand in player_hands: 
-        action = make_decision(player_hand, dealer_card, num_decks_remaining) # this calls the make_decision function and passes the player hand, dealer card, and number of decks remaining
-        if action == 1:  # Hit
-            player_hand.append(shoe.pop()) # this appends the popped card to the player hand list
-            update_card_count(player_hand[-1]) # this updates the card count for the card that was popped from the shoe
-        player_value = calculate_hand_value(player_hand) # this calculates the hand value of the player
-        dealer_value = calculate_hand_value(dealer_hand) # this calculates the hand value of the dealer
-        if dealer_value > 21 or player_value > dealer_value: # this checks if the dealer value is greater than 21 or if the player value is greater than the dealer value
-            outcome = 1  # A win
-        elif player_value == dealer_value: # this checks if the player value is equal to the dealer value
-            outcome = 0  # A tie
+    dealer_card = shoe.pop()
+    dealer_hand.append(dealer_card)
+    update_seen_cards(dealer_card)
+
+    for player_hand in player_hands:
+        card = shoe.pop()
+        player_hand.append(card)
+        update_seen_cards(card)
+
+    for player_hand in player_hands:
+        action = make_decision(player_hand, dealer_card, seen_cards, total_deck_count)
+        if action == 1:
+            new_card = shoe.pop()
+            player_hand.append(new_card)
+            update_seen_cards(new_card)
+
+        player_value = calculate_hand_value(player_hand)
+        dealer_value = calculate_hand_value(dealer_hand)
+        if dealer_value > 21 or player_value > dealer_value:
+            outcome = 1
+        elif player_value == dealer_value:
+            outcome = 0
         else:
-            outcome = -1  # A loss
-        update_card_count(dealer_hand[0]) # this updates the card count for the dealer hand face down card since we are done with the round
-        current_probabilities = calculate_probabilities(num_decks_remaining, card_count) # this calculates the probabilities of the cards remaining in the shoe after the round
+            outcome = -1
 
-        # this is how I am storing the data for each round
+        current_probabilities = calculate_probabilities(seen_cards, total_deck_count)
+
         round_data = {
-            'num_players': NUM_PLAYERS, # this is the number of players at the table
-            'num_decks': NUM_DECKS, # this is the number of decks in the shoe
-            'Player Initial Hand': calculate_hand_value(player_hand[:2]), # this is the player initial hand value (first 2 cards)
-            'Dealer Up Card': calculate_hand_value([dealer_card]), # this is the dealer up card value
-            'Action Taken': action, # this is the action taken by the player (hit or stay)
-            'Outcome': outcome # this is the outcome of the round (win, loss, or tie)
+            'num_players': NUM_PLAYERS,
+            'num_decks': NUM_DECKS,
+            'Player Initial Hand': calculate_hand_value(player_hand[:2]),
+            'Dealer Up Card': calculate_hand_value([dealer_card]),
+            'Action Taken': action,
+            'Outcome': outcome
         }
         for card in RANKS:
-            round_data[f'Count_{card}'] = card_count[card] # this appends the card count for each card to the round data
-            round_data[f'Probability_{card}'] = current_probabilities[card] # this appends the probability for each card to the round data
+            round_data[f'Seen_{card}'] = seen_cards[card]
+            round_data[f'Probability_{card}'] = current_probabilities[card]
 
-        # Appending round data to the data list
-        data.append(round_data) # this appends the round data to the data list
+        data.append(round_data)
 
-# Export to CSV after all rounds are complete
-df = pd.DataFrame(data) # this creates a dataframe from the data list
-df.to_csv(f"{NUM_DECKS}_{NUM_PLAYERS}_blackjack_training_data.csv", index=False) # this exports the dataframe to a csv file
+# Convert to DataFrame and export to CSV
+df = pd.DataFrame(data)
+csv_filename = f"{NUM_DECKS}_{NUM_PLAYERS}_blackjack_training_data.csv"
+df.to_csv(csv_filename, index=False)
