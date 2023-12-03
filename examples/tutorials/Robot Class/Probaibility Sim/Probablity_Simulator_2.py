@@ -3,9 +3,9 @@ import pandas as pd
 import math
 
 # Create parameters
-NUM_DECKS = 4 # Number of decks in the shoe
-NUM_PLAYERS = 3 # Number of players at the table
-NUM_ROUNDS = 1000 # Number of rounds to simulate
+NUM_DECKS = 8 # Number of decks in the shoe
+NUM_PLAYERS = 4 # Number of players at the table
+NUM_ROUNDS = 10000 # Number of rounds to simulate
 MIN_CARDS_BEFORE_RESHUFFLE = 52 # Minimum number of cards before reshuffling
 
 # Initialize the creation of the deck
