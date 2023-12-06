@@ -13,7 +13,7 @@ def capture_and_save_image(robot, image_count):
     
     # Take a picture and save with unique name
     image = robot.world.latest_image.raw_image
-    image.save(f"Cheap AI art mountain lake trees{image_count}.png", 'PNG')
+    image.save(f"Georges Seurat A Sunday Afternoon on the Island of La Grande Jatte 1884–1886{image_count}.png", 'PNG')
 
 def cozmo_program(robot: cozmo.robot.Robot):
     image_count = 0

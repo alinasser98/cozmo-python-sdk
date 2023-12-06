@@ -1,4 +1,10 @@
 {
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.autoComplete.extraPaths": [
+
+    ],
+    "python.globalModuleInstallation": false,
+    "python.terminal.activateEnvironment": false,
+    "python.analysis.extraPaths": []
 }
