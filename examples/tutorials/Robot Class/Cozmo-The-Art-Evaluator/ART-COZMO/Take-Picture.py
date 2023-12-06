@@ -5,7 +5,7 @@ from cozmo.util import degrees
 from cozmo.objects import LightCube1Id
 
 # Set the initial head angle (in degrees)
-initial_head_angle = 45
+initial_head_angle = 22
 
 def capture_and_save_image(robot, image_count):
     # Set the head angle
