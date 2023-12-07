@@ -22,7 +22,7 @@ art_database = {
         "description": "This is one of Munch's four versions of 'The Scream', it symbolizes modern existential angst and has an iconic status in art history.",
         "appraisal": "I want to offer you one hundred and fifty million dollars"
     },
-    "Georges-Seurat-A-Sunday-Afternoon-on-the-Island-of-La-Grande-Jatte-1884-1886": {
+    "Georges-Seurat-A-Sunday-Afternoon": {
         "name": " This is Georges Seurat's A Sunday Afternoon on the Island of La Grande Jatte",
         "remark": "This is a very famous painting and I think it will sell for a ton of money",
         "artist": "The artist is Georges Seurat",
@@ -40,7 +40,7 @@ art_database = {
         "description": "This is part of O'Keeffe's famous series of flower paintings, Red Canna is celebrated for its vibrant colors and bold depiction.",
         "appraisal": "I would like to make an offer for forty five millions dollars and fifty cents"
     },
-    "Johanne-Vermeer-The-Girl-With-a-Pearl-Earring-1632": {
+    "Pearl-Earring": {
         "name": "This is Johannes Vermeer's The Girl With a Pearl Earrings",
         "remark": "This is a very famous painting and I think it will sell for whole lot of money",
         "artist": "Johannes Vermeer",
@@ -81,9 +81,9 @@ art_database = {
 # Class indices mapping
 class_indices = {
     0: "Edvard-Munch-The-Scream-1893",
-    1: "Georges-Seurat-A-Sunday-Afternoon-on-the-Island-of-La-Grande-Jatte-1884-1886",
+    1: "Georges-Seurat-A-Sunday-Afternoon",
     2: "Georgia-OKeeffe-Red-Canna-1924",
-    3: "Johanne-Vermeer-The-Girl-With-a-Pearl-Earring-1632",
+    3: "Pearl-Earring",
     4: "Mountain-AI-Lake-Training-Photos",
     5: "René-Magritte-The-Son-of-Man-1964",
     6: "Street-Lights-And-Trees-AI-Art",    
